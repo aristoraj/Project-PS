@@ -59,7 +59,9 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
             )}
             {gallery.copy_status === "partial" && <>Some photos could not be copied.</>}
             {gallery.copy_status === "failed" && <>Copying to Drive failed.</>}
-            {gallery.copy_status === "none" && <>Not copied to Drive yet.</>}
+            {gallery.copy_status === "none" && (
+              <>Saved in the app. Click a photo below to open it in Drive, or copy the file names to search your folder.</>
+            )}
             {gallery.copy_error && <pre>{gallery.copy_error}</pre>}
           </div>
         )}
@@ -70,8 +72,10 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
             <div className="thumbs">
               {selections.map((s) => (
                 <figure key={s.file_id}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/api/img/${gallery.token}/${s.file_id}?s=400`} alt={s.file_name} loading="lazy" />
+                  <a href={`https://drive.google.com/file/d/${s.file_id}/view`} target="_blank" rel="noreferrer">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`/api/img/${gallery.token}/${s.file_id}?s=400`} alt={s.file_name} loading="lazy" />
+                  </a>
                   <figcaption>{s.file_name}</figcaption>
                 </figure>
               ))}

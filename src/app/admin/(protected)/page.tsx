@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { listGalleries } from "@/lib/db";
-import { driveConnected, googleConfigured } from "@/lib/drive";
+import { driveMode, googleConfigured } from "@/lib/drive";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,7 @@ const DRIVE_MSG: Record<string, string> = {
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ drive?: string }> }) {
   const { drive } = await searchParams;
   const galleries = await listGalleries();
-  const connected = await driveConnected();
+  const mode = await driveMode();
 
   return (
     <>
@@ -22,14 +22,19 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         <p className={drive === "connected" ? "notice ok" : "notice warn"}>{DRIVE_MSG[drive]}</p>
       )}
 
-      {!connected && (
+      {mode === "none" && (
         <div className="notice warn">
-          {googleConfigured() ? (
+          Set GOOGLE_API_KEY (works with folders shared as “Anyone with the link”) and restart. See README.
+        </div>
+      )}
+      {mode === "key" && (
+        <div className="notice ok">
+          Public-link mode: use folders shared as “Anyone with the link”. Clients&apos; picks are saved here in the app.
+          {googleConfigured() && (
             <>
-              Google Drive isn&apos;t connected yet. <a href="/api/google/connect">Connect Google Drive</a>
+              {" "}
+              <a href="/api/google/connect">Connect Google Drive</a> to also copy picks into your Drive folder.
             </>
-          ) : (
-            <>Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env.local, then restart. See README.</>
           )}
         </div>
       )}

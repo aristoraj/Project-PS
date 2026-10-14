@@ -9,8 +9,20 @@ export type Photo = { id: string; name: string; thumbnailLink: string | null };
 
 export class DriveNotConnectedError extends Error {
   constructor() {
-    super("Google Drive is not connected. Open the admin dashboard and click “Connect Google Drive”.");
+    super("Google Drive access is not set up. Set GOOGLE_API_KEY (public folders) or connect Google Drive in the admin.");
   }
+}
+
+/**
+ * "oauth": signed in as the admin; can read private folders and write the Selected folder.
+ * "key":   GOOGLE_API_KEY only; works with folders shared as "Anyone with the link", read-only.
+ * "none":  nothing configured.
+ */
+export type DriveMode = "oauth" | "key" | "none";
+
+export async function driveMode(): Promise<DriveMode> {
+  if (await getSetting("google_refresh_token")) return "oauth";
+  return process.env.GOOGLE_API_KEY ? "key" : "none";
 }
 
 export function appUrl(): string {
@@ -19,10 +31,6 @@ export function appUrl(): string {
 
 export function googleConfigured(): boolean {
   return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
-}
-
-export async function driveConnected(): Promise<boolean> {
-  return Boolean(await getSetting("google_refresh_token"));
 }
 
 export function oauthClient(): OAuth2Client {
@@ -42,7 +50,10 @@ async function authedClient(): Promise<OAuth2Client> {
 }
 
 async function drive(): Promise<drive_v3.Drive> {
-  return google.drive({ version: "v3", auth: await authedClient() });
+  const mode = await driveMode();
+  if (mode === "none") throw new DriveNotConnectedError();
+  const auth = mode === "oauth" ? await authedClient() : process.env.GOOGLE_API_KEY!;
+  return google.drive({ version: "v3", auth });
 }
 
 /** Accepts a Drive folder URL (…/folders/ID or …?id=ID) or a bare folder ID. */
@@ -54,11 +65,21 @@ export function parseFolderId(input: string): string | null {
 }
 
 export async function getFolder(folderId: string): Promise<{ id: string; name: string }> {
-  const res = await (await drive()).files.get({
-    fileId: folderId,
-    fields: "id,name,mimeType",
-    supportsAllDrives: true,
-  });
+  let res;
+  try {
+    res = await (await drive()).files.get({
+      fileId: folderId,
+      fields: "id,name,mimeType",
+      supportsAllDrives: true,
+    });
+  } catch (e) {
+    if ((await driveMode()) === "key") {
+      throw new Error(
+        "Couldn't open that folder. In Google Drive, set its sharing to “Anyone with the link” (Viewer) and try again.",
+      );
+    }
+    throw e;
+  }
   if (res.data.mimeType !== FOLDER_MIME) throw new Error("That link is a file, not a folder.");
   return { id: res.data.id!, name: res.data.name ?? "" };
 }
@@ -94,7 +115,7 @@ export async function listPhotos(folderId: string, fresh = false): Promise<Photo
   return photos;
 }
 
-/** Fetches a resized rendition of a photo through the admin's credentials. */
+/** Fetches a resized rendition of a photo (with the admin's login if connected, else as a public file). */
 export async function fetchThumbnail(
   folderId: string,
   fileId: string,
@@ -105,10 +126,13 @@ export async function fetchThumbnail(
     const photo = photos.find((p) => p.id === fileId);
     if (!photo?.thumbnailLink) return null;
 
-    const auth = await authedClient();
-    const { token } = await auth.getAccessToken();
     const url = photo.thumbnailLink.replace(/=s\d+$/, `=s${size}`);
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    const headers: Record<string, string> = {};
+    if ((await driveMode()) === "oauth") {
+      const { token } = await (await authedClient()).getAccessToken();
+      headers.Authorization = `Bearer ${token}`;
+    }
+    const res = await fetch(url, { headers });
     if (res.ok) {
       return {
         body: await res.arrayBuffer(),

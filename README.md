@@ -6,23 +6,29 @@ Share a Google Drive photo shoot with a client as a mobile-friendly gallery. The
 
 1. **Admin** (`/admin`): create a client, paste the Drive folder link, and get a private share link.
 2. **Client** (`/g/<token>`): browses the photos (2 or 4 columns on mobile, an automatic grid on desktop), taps ♥ to select, and submits.
-3. On submit, the selected photos are copied to `<your folder>/Selected photos by client` in Drive. The admin page also lists the file names and shows thumbnails.
+3. The admin page shows the picks as thumbnails (click one to open it in Drive) with a "Copy file names" button. With the optional OAuth connection (below), the picks are also copied into `<your folder>/Selected photos by client` in Drive.
 4. After editing, send the finals back however you like. Payments and a "final delivery" step are not built yet.
 
-Clients never see Drive URLs. All images are proxied through the app, using your Google account.
+Clients never see Drive URLs. All images are proxied through the app.
 
 ## Setup
 
-### 1. Google OAuth client (one-time)
+### 1. Google API key (simplest, public-link mode)
 
 1. Go to <https://console.cloud.google.com/> and create or pick a project.
 2. **APIs & Services → Library → Google Drive API → Enable.**
-3. **OAuth consent screen**: user type *External*, add yourself as a **Test user**.
-4. **Credentials → Create credentials → OAuth client ID → Web application.**
-   Add the authorized redirect URI `http://localhost:3000/api/google/callback`. Add your production URL's callback too once you deploy.
-5. Copy the client ID and secret.
+3. **Credentials → Create credentials → API key.** Optionally restrict it to the Google Drive API.
+4. Put it in `GOOGLE_API_KEY`.
 
-The app requests the `drive` scope because it has to read folders you created elsewhere and write the "Selected photos by client" folder.
+In Drive, set each client folder's sharing to **Anyone with the link → Viewer**. The app can then list and show the photos, but it can't write to your Drive, so picks are kept in the app.
+
+### 1b. Optional: Google OAuth (private folders + copy into Drive)
+
+1. In the same project: **OAuth consent screen**: user type *External*, add yourself as a **Test user** (publish to *In production* when deployed, or the login expires after 7 days).
+2. **Credentials → Create credentials → OAuth client ID → Web application.** Add the redirect URI `<APP_URL>/api/google/callback`.
+3. Set `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`, then click **Connect Google Drive** in the admin.
+
+This asks for the `drive` scope so it can read private folders and write "Selected photos by client". Once connected it takes over from the API key.
 
 ### 2. Configure and run
 
@@ -41,9 +47,8 @@ For local development use any Postgres (for example `postgres://postgres:postgre
 ## Deploying to Render
 
 1. Create a free Postgres database (Neon or Supabase free tiers don't expire; Render's free Postgres does after 30 days) and copy its connection string.
-2. New → Blueprint in Render, select this repo, and fill in `DATABASE_URL`, `ADMIN_PASSWORD`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`.
-3. In Google Cloud add `<APP_URL>/api/google/callback` as a redirect URI and set the consent screen to *In production* (in Testing mode the Drive login expires after 7 days).
-4. Open `<APP_URL>/admin` and click Connect Google Drive.
+2. New → Blueprint in Render, select this repo, and fill in `DATABASE_URL`, `ADMIN_PASSWORD`, `GOOGLE_API_KEY`, `APP_URL`. (OAuth variables are optional.)
+3. Share each client folder as *Anyone with the link* and create the client in `<APP_URL>/admin`.
 
 ## Notes
 

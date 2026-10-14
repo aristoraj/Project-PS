@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: photo-selector
+    runtime: node
+    plan: starter # persistent disks aren't available on the free plan
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: DATA_DIR
+        value: /var/data
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: APP_URL
+        sync: false # e.g. https://photo-selector.onrender.com
+    disk:
+      name: data
+      mountPath: /var/data
+      sizeGB: 1

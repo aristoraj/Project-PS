@@ -4,7 +4,7 @@ import { listPhotos } from "@/lib/drive";
 
 export async function POST(req: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const gallery = getGalleryByToken(token);
+  const gallery = await getGalleryByToken(token);
   if (!gallery) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (gallery.status === "submitted") {
     return NextResponse.json({ error: "Selection already submitted" }, { status: 409 });
@@ -19,6 +19,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   const photo = photos.find((p) => p.id === body.fileId);
   if (!photo) return NextResponse.json({ error: "Photo not in this gallery" }, { status: 404 });
 
-  setSelected(gallery.id, photo.id, photo.name, body.selected);
+  await setSelected(gallery.id, photo.id, photo.name, body.selected);
   return NextResponse.json({ ok: true });
 }

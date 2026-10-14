@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ token: string; fileId: string }> },
 ) {
   const { token, fileId } = await params;
-  const gallery = getGalleryByToken(token);
+  const gallery = await getGalleryByToken(token);
   if (!gallery) return new NextResponse("Not found", { status: 404 });
 
   const raw = Number(new URL(req.url).searchParams.get("s") ?? 400);

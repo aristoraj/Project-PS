@@ -13,8 +13,8 @@ const DRIVE_MSG: Record<string, string> = {
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ drive?: string }> }) {
   const { drive } = await searchParams;
-  const galleries = listGalleries();
-  const connected = driveConnected();
+  const galleries = await listGalleries();
+  const connected = await driveConnected();
 
   return (
     <>

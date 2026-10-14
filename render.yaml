@@ -2,14 +2,14 @@ services:
   - type: web
     name: photo-selector
     runtime: node
-    plan: starter # persistent disks aren't available on the free plan
+    plan: free # sleeps after ~15 min idle (first visit then takes ~30-60s); use starter to avoid
     buildCommand: npm install && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_VERSION
         value: 22
-      - key: DATA_DIR
-        value: /var/data
+      - key: DATABASE_URL
+        sync: false # Postgres connection string (Neon, Supabase or Render Postgres)
       - key: ADMIN_PASSWORD
         sync: false
       - key: SESSION_SECRET
@@ -20,7 +20,3 @@ services:
         sync: false
       - key: APP_URL
         sync: false # e.g. https://photo-selector.onrender.com
-    disk:
-      name: data
-      mountPath: /var/data
-      sizeGB: 1

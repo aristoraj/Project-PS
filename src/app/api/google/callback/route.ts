@@ -9,6 +9,6 @@ export async function GET(req: Request) {
   if (!code) return NextResponse.redirect(new URL("/admin?drive=denied", req.url));
   const { tokens } = await oauthClient().getToken(code);
   if (!tokens.refresh_token) return NextResponse.redirect(new URL("/admin?drive=norefresh", req.url));
-  setSetting("google_refresh_token", tokens.refresh_token);
+  await setSetting("google_refresh_token", tokens.refresh_token);
   return NextResponse.redirect(new URL("/admin?drive=connected", req.url));
 }

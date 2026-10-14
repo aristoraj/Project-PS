@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { checkPassword, endAdminSession, requireAdmin, startAdminSession } from "@/lib/auth";
-import { createGallery, db, getGalleryById } from "@/lib/db";
+import { createGallery, deleteGallery as removeGallery, getGalleryById, reopenGallery as reopen } from "@/lib/db";
 import { getFolder, parseFolderId } from "@/lib/drive";
 import { runCopy } from "@/lib/submit";
 
@@ -31,7 +31,7 @@ export async function createClientGallery(formData: FormData) {
   else {
     try {
       const folder = await getFolder(folderId);
-      id = createGallery(name, folder.id, folder.name).id;
+      id = (await createGallery(name, folder.id, folder.name)).id;
     } catch (e) {
       error = e instanceof Error ? e.message : "Could not open that folder.";
     }
@@ -43,7 +43,7 @@ export async function createClientGallery(formData: FormData) {
 export async function retryCopy(formData: FormData) {
   await requireAdmin();
   const id = Number(formData.get("id"));
-  const gallery = getGalleryById(id);
+  const gallery = await getGalleryById(id);
   if (gallery) await runCopy(gallery);
   redirect(`/admin/${id}`);
 }
@@ -51,13 +51,13 @@ export async function retryCopy(formData: FormData) {
 export async function reopenGallery(formData: FormData) {
   await requireAdmin();
   const id = Number(formData.get("id"));
-  db.prepare("UPDATE galleries SET status = 'open', submitted_at = NULL WHERE id = ?").run(id);
+  await reopen(id);
   redirect(`/admin/${id}`);
 }
 
 export async function deleteGallery(formData: FormData) {
   await requireAdmin();
   // Removes the record and share link only; nothing in Google Drive is touched.
-  db.prepare("DELETE FROM galleries WHERE id = ?").run(Number(formData.get("id")));
+  await removeGallery(Number(formData.get("id")));
   redirect("/admin");
 }

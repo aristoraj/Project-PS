@@ -34,7 +34,16 @@ npm run dev
 
 Open <http://localhost:3000/admin>, sign in with `ADMIN_PASSWORD`, click **Connect Google Drive**, then **+ New client**.
 
-Data (clients, selections, the Google token) is stored in `data/app.db`. Back it up and keep it private.
+Data (clients, selections, the Google token) is stored in Postgres via `DATABASE_URL`; tables are created automatically on first use. Keep the connection string private.
+
+For local development use any Postgres (for example `postgres://postgres:postgres@localhost:5432/photos`, with `PGSSLMODE=disable` for non-local hosts without SSL).
+
+## Deploying to Render
+
+1. Create a free Postgres database (Neon or Supabase free tiers don't expire; Render's free Postgres does after 30 days) and copy its connection string.
+2. New → Blueprint in Render, select this repo, and fill in `DATABASE_URL`, `ADMIN_PASSWORD`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`.
+3. In Google Cloud add `<APP_URL>/api/google/callback` as a redirect URI and set the consent screen to *In production* (in Testing mode the Drive login expires after 7 days).
+4. Open `<APP_URL>/admin` and click Connect Google Drive.
 
 ## Notes
 

@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ClientGalleryPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const gallery = getGalleryByToken(token);
+  const gallery = await getGalleryByToken(token);
   if (!gallery) notFound();
 
   let photos: { id: string; name: string }[] = [];
@@ -17,6 +17,8 @@ export default async function ClientGalleryPage({ params }: { params: Promise<{ 
   } catch {
     loadError = true;
   }
+
+  const selections = await getSelections(gallery.id);
 
   if (loadError) {
     return (
@@ -32,7 +34,7 @@ export default async function ClientGalleryPage({ params }: { params: Promise<{ 
       token={token}
       clientName={gallery.client_name}
       photos={photos}
-      initialSelected={getSelections(gallery.id).map((s) => s.file_id)}
+      initialSelected={selections.map((s) => s.file_id)}
       initiallySubmitted={gallery.status === "submitted"}
     />
   );

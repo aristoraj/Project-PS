@@ -10,14 +10,14 @@ export const dynamic = "force-dynamic";
 
 export default async function ClientDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const gallery = getGalleryById(Number(id));
+  const gallery = await getGalleryById(Number(id));
   if (!gallery) notFound();
 
   const h = await headers();
   const host = h.get("host") ?? "localhost:3000";
   const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
   const shareUrl = `${proto}://${host}/g/${gallery.token}`;
-  const selections = getSelections(gallery.id);
+  const selections = await getSelections(gallery.id);
   const names = selections.map((s) => s.file_name).join("\n");
   const submitted = gallery.status === "submitted";
 

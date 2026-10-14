@@ -1,6 +1,6 @@
 import { google, type drive_v3 } from "googleapis";
 import type { OAuth2Client } from "google-auth-library";
-import { db, getSetting, type Gallery } from "./db";
+import { getSetting, setSelectedFolder, type Gallery } from "./db";
 
 export const SELECTED_FOLDER_NAME = "Selected photos by client";
 const FOLDER_MIME = "application/vnd.google-apps.folder";
@@ -21,8 +21,8 @@ export function googleConfigured(): boolean {
   return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 }
 
-export function driveConnected(): boolean {
-  return Boolean(getSetting("google_refresh_token"));
+export async function driveConnected(): Promise<boolean> {
+  return Boolean(await getSetting("google_refresh_token"));
 }
 
 export function oauthClient(): OAuth2Client {
@@ -33,16 +33,16 @@ export function oauthClient(): OAuth2Client {
   );
 }
 
-function authedClient(): OAuth2Client {
-  const refresh = getSetting("google_refresh_token");
+async function authedClient(): Promise<OAuth2Client> {
+  const refresh = await getSetting("google_refresh_token");
   if (!refresh) throw new DriveNotConnectedError();
   const client = oauthClient();
   client.setCredentials({ refresh_token: refresh });
   return client;
 }
 
-function drive(): drive_v3.Drive {
-  return google.drive({ version: "v3", auth: authedClient() });
+async function drive(): Promise<drive_v3.Drive> {
+  return google.drive({ version: "v3", auth: await authedClient() });
 }
 
 /** Accepts a Drive folder URL (…/folders/ID or …?id=ID) or a bare folder ID. */
@@ -54,7 +54,7 @@ export function parseFolderId(input: string): string | null {
 }
 
 export async function getFolder(folderId: string): Promise<{ id: string; name: string }> {
-  const res = await drive().files.get({
+  const res = await (await drive()).files.get({
     fileId: folderId,
     fields: "id,name,mimeType",
     supportsAllDrives: true,
@@ -71,7 +71,7 @@ export async function listPhotos(folderId: string, fresh = false): Promise<Photo
   const hit = listCache.get(folderId);
   if (!fresh && hit && Date.now() - hit.at < LIST_TTL_MS) return hit.photos;
 
-  const d = drive();
+  const d = await drive();
   const photos: Photo[] = [];
   let pageToken: string | undefined;
   do {
@@ -105,7 +105,7 @@ export async function fetchThumbnail(
     const photo = photos.find((p) => p.id === fileId);
     if (!photo?.thumbnailLink) return null;
 
-    const auth = authedClient();
+    const auth = await authedClient();
     const { token } = await auth.getAccessToken();
     const url = photo.thumbnailLink.replace(/=s\d+$/, `=s${size}`);
     const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
@@ -148,7 +148,7 @@ async function ensureSelectedFolder(d: drive_v3.Drive, gallery: Gallery): Promis
     });
     id = created.data.id!;
   }
-  db.prepare("UPDATE galleries SET selected_folder_id = ? WHERE id = ?").run(id, gallery.id);
+  await setSelectedFolder(gallery.id, id);
   return id;
 }
 
@@ -161,7 +161,7 @@ export async function copySelectionsToDrive(
   files: { file_id: string; file_name: string }[],
 ): Promise<{ status: "done" | "partial" | "failed"; error: string | null }> {
   try {
-    const d = drive();
+    const d = await drive();
     const folderId = await ensureSelectedFolder(d, gallery);
 
     const already = new Set<string>();
